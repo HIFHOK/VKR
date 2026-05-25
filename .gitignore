@@ -1,7 +1,17 @@
+# Секреты и конфигурация
 .env
+.env.*
+
+# Виртуальное окружение
 venv/
+env/
+
+# Python
 __pycache__/
-*.pyc
-.idea/
-.vscode/
-postgres/init.sql  # Если там реальные пароли, лучше игнорировать
+*.py[cod]
+*.so
+.Python
+
+# Логи и временные файлы
+*.log
+logs.txt

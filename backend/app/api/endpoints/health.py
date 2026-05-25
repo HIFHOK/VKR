@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text  # ✅ Добавлено
 from app.db.session import get_db
 
 router = APIRouter()
@@ -8,11 +9,11 @@ router = APIRouter()
 async def health_check(db: AsyncSession = Depends(get_db)):
     """Проверка работоспособности сервиса и БД"""
     try:
-        await db.execute("SELECT 1")
+        # ✅ Обернули запрос в text()
+        await db.execute(text("SELECT 1"))
         db_status = "connected"
     except Exception:
         db_status = "disconnected"
-    
     return {
         "status": "ok",
         "database": db_status,

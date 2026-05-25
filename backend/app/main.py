@@ -18,15 +18,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.api.endpoints import health, nodes, metrics
+# Импорты роутеров (если файла resources нет, закоментируйте эту строку)
+from app.api.endpoints import health, nodes, metrics, resources
 
 app.include_router(health.router, prefix=settings.API_V1_PREFIX)
 app.include_router(nodes.router, prefix=settings.API_V1_PREFIX, tags=["nodes"])
+app.include_router(resources.router, prefix=settings.API_V1_PREFIX, tags=["resources"])
 app.include_router(metrics.router, prefix=settings.API_V1_PREFIX, tags=["metrics"])
 
 @app.on_event("startup")
 async def startup_db():
-    # Импортируем модели ЗДЕСЬ, чтобы SQLAlchemy увидел их перед созданием таблиц
+    # Импортируем модели ВНУТРИ стартапа, чтобы избежать циклических импортов
     from app.models import Node, Resource, Metric, MetricValue, AggregatedData
     from app.db.base import Base
     from app.db.session import engine

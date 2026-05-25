@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
 
 class Settings(BaseSettings):
-    # Игнорируем неизвестные переменные из .env (например, database_url)
+    # Игнорируем лишние переменные из .env, чтобы Pydantic не ругался
     model_config = ConfigDict(env_file='.env', extra='ignore')
 
     APP_NAME: str = "Accounting Subsystem"

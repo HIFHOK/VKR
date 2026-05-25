@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 class Resource(Base):
-    __tablename__ = "resources"
+    __tablename__ = "resources"  # ДВЕ черты подчеркивания!
 
     id = Column(Integer, primary_key=True, index=True)
     node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False)
@@ -12,5 +12,6 @@ class Resource(Base):
     unit = Column(String(20), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Строки без пробелов на концах!
     node = relationship("Node", back_populates="resources")
     metrics = relationship("Metric", back_populates="resource", cascade="all, delete-orphan")
