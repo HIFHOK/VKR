@@ -40,3 +40,22 @@ async def list_nodes(skip: int = 0, limit: int = 100, db: AsyncSession = Depends
     """Список узлов с пагинацией"""
     result = await db.execute(select(Node).offset(skip).limit(limit))
     return result.scalars().all()
+
+@router.get("/{node_id}", response_model=NodeResponse)
+async def get_node(node_id: int, db: AsyncSession = Depends(get_db)):
+    """Получить узел по ID"""
+    result = await db.execute(select(Node).where(Node.id == node_id))
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    return node
+
+@router.delete("/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_node(node_id: int, db: AsyncSession = Depends(get_db)):
+    """Удалить узел"""
+    result = await db.execute(select(Node).where(Node.id == node_id))
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    await db.delete(node)
+    await db.commit()

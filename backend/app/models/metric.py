@@ -1,48 +1,50 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, func, Index
+from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
+
 class Metric(Base):
+    """Метаданные метрики (справочник)"""
     __tablename__ = "metrics"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    resource_id = Column(Integer, ForeignKey("resources.id", ondelete="CASCADE"), nullable=False)
-    name = Column(String(100), nullable=False)  # prometheus metric name
-    unit = Column(String(30), nullable=False)
-    description = Column(String(255))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
-    resource = relationship("Resource", back_populates="metrics")
+    name = Column(String(100), unique=True, nullable=False)
+    description = Column(String(500))
+    unit = Column(String(50))
+
     values = relationship("MetricValue", back_populates="metric", cascade="all, delete-orphan")
-    aggregated = relationship("AggregatedData", back_populates="metric", cascade="all, delete-orphan")
+
 
 class MetricValue(Base):
+    """Конкретные значения метрик во времени"""
     __tablename__ = "metric_values"
-    __table_args__ = (
-        Index("idx_metric_values_metric_time", "metric_id", "timestamp", postgresql_using="btree"),
-    )
-    
-    id = Column(Integer, primary_key=True)
-    metric_id = Column(Integer, ForeignKey("metrics.id", ondelete="CASCADE"), nullable=False)
+
+    id = Column(Integer, primary_key=True, index=True)
+    # ← ЭТО КРИТИЧЕСКИ ВАЖНО: ForeignKey на resources.id
+    resource_id = Column(Integer, ForeignKey("resources.id", ondelete="CASCADE"), nullable=False, index=True)
     value = Column(Float, nullable=False)
-    timestamp = Column(DateTime(timezone=True), nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    # ← Связь с Resource (back_populates должен совпадать)
+    resource = relationship("Resource", back_populates="metrics")
     
+    # Опциональная связь со справочником метрик
+    metric_id = Column(Integer, ForeignKey("metrics.id", ondelete="SET NULL"), nullable=True)
     metric = relationship("Metric", back_populates="values")
 
+
 class AggregatedData(Base):
+    """Агрегированные данные (MIN, MAX, AVG за период)"""
     __tablename__ = "aggregated_data"
-    __table_args__ = (
-        Index("idx_aggregated_metric_period_time", "metric_id", "period", "start_time"),
-    )
-    
-    id = Column(Integer, primary_key=True)
-    metric_id = Column(Integer, ForeignKey("metrics.id", ondelete="CASCADE"), nullable=False)
-    period = Column(String(10), nullable=False)  # "1h", "1d", "7d"
-    min_value = Column(Float, nullable=False)
-    max_value = Column(Float, nullable=False)
-    avg_value = Column(Float, nullable=False)
-    start_time = Column(DateTime(timezone=True), nullable=False)
-    end_time = Column(DateTime(timezone=True), nullable=False)
-    calculated_at = Column(DateTime(timezone=True), server_default=func.now())
-    
-    metric = relationship("Metric", back_populates="aggregated")
+
+    id = Column(Integer, primary_key=True, index=True)
+    resource_id = Column(Integer, ForeignKey("resources.id", ondelete="CASCADE"), nullable=False, index=True)
+    period_start = Column(DateTime(timezone=True), nullable=False)
+    period_end = Column(DateTime(timezone=True), nullable=False)
+    min_value = Column(Float)
+    max_value = Column(Float)
+    avg_value = Column(Float)
+    sample_count = Column(Integer)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    resource = relationship("Resource")

@@ -7,7 +7,6 @@ engine = create_async_engine(
     pool_pre_ping=True
 )
 
-# ✅ Правильный способ для асинхронности
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 async def get_db() -> AsyncSession:

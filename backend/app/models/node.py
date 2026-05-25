@@ -2,8 +2,9 @@ from sqlalchemy import Column, Integer, String, DateTime, func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
+
 class Node(Base):
-    __tablename__ = "nodes"  # ДВЕ черты подчеркивания!
+    __tablename__ = "nodes"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False, index=True)

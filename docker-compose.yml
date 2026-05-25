@@ -22,6 +22,25 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - promdata:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - accounting_net
+    restart: unless-stopped
+  
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
     networks:
       - accounting_net
     restart: unless-stopped
@@ -46,6 +65,17 @@ services:
     networks:
       - accounting_net
     restart: unless-stopped
+    
+  frontend:
+    build: ./frontend
+    container_name: accounting_frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - accounting_net
+    restart: unless-stopped
 
 networks:
   accounting_net:
@@ -54,3 +84,4 @@ networks:
 volumes:
   pgdata:
   promdata:
+  grafana_data:
