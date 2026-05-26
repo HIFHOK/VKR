@@ -5,8 +5,8 @@ import asyncio
 from app.core.config import settings
 from app.db.session import engine
 from app.db.base import Base
-from app.api.endpoints import health, nodes, metrics, resources  # ← Все импорты
 from app.services.scheduler import scheduled_collect
+from app.api.endpoints import health, nodes, metrics, resources, hardware, aggregation
 
 app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
 
@@ -23,7 +23,9 @@ app.add_middleware(
 app.include_router(health.router, prefix=settings.API_V1_PREFIX, tags=["health"])
 app.include_router(nodes.router, prefix=settings.API_V1_PREFIX, tags=["nodes"])
 app.include_router(resources.router, prefix=settings.API_V1_PREFIX, tags=["resources"])
-app.include_router(metrics.router, prefix=settings.API_V1_PREFIX + "/metrics", tags=["metrics"])  # ← ВАЖНО: prefix с /metrics!
+app.include_router(metrics.router, prefix=settings.API_V1_PREFIX + "/metrics", tags=["metrics"])
+app.include_router(hardware.router, prefix=settings.API_V1_PREFIX + "/hardware", tags=["hardware"])  # ← ВАЖНО: prefix с /metrics!
+app.include_router(aggregation.router, prefix=settings.API_V1_PREFIX, tags=["aggregation"])
 
 @app.on_event("startup")
 async def startup_db():

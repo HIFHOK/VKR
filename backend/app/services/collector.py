@@ -1,47 +1,106 @@
 import httpx
-from datetime import datetime
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.metric import MetricValue
+from sqlalchemy import select
+from datetime import datetime
+from app.models.node import Node
 from app.models.resource import Resource
+from app.models.hardware import HardwareComponent
+from app.models.metric import MetricValue
 
 PROMETHEUS_URL = "http://prometheus:9090"
 
+
 async def collect_and_save_data(db: AsyncSession):
-    """
-    Основная функция сбора:
-    1. Берет все ресурсы из БД.
-    2. Для каждого делает запрос в Prometheus.
-    3. Сохраняет значение в таблицу metric_values.
-    """
-    result = await db.execute(select(Resource))
+    """Сбор метрик для всех узлов, ресурсов и компонентов"""
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        # 1. Сбор для старых Resource (обратная совместимость)
+        await _collect_resources(db, client)
+        
+        # 2. Сбор для новых HardwareComponent
+        await _collect_hardware_components(db, client)
+    
+    await db.commit()
+
+
+async def _collect_resources(db: AsyncSession, client: httpx.AsyncClient):
+    """Сбор метрик для Resource (legacy)"""
+    result = await db.execute(select(Resource).join(Node))
     resources = result.scalars().all()
     
-    if not resources:
-        print("Нет ресурсов для сбора данных")
-        return
+    for resource in resources:
+        try:
+            value = await _query_prometheus(client, resource.metric_query)
+            if value is not None:
+                record = MetricValue(
+                    resource_id=resource.id,  # ← только resource_id
+                    hardware_id=None,          # ← явно None
+                    value=value,
+                    timestamp=datetime.utcnow()
+                )
+                db.add(record)
+                resource.current_usage = value
+        except Exception as e:
+            print(f"Error collecting resource {resource.name}: {e}")
 
-    async with httpx.AsyncClient() as client:
-        for resource in resources:
-            try:
-                query_url = f"{PROMETHEUS_URL}/api/v1/query?query={resource.metric_query}"
-                response = await client.get(query_url)
-                data = response.json()
 
-                if data.get("status") == "success" and data["data"]["result"]:
-                    value = float(data["data"]["result"][0]["value"][1])
-                    print(f"[OK] {resource.name}: {value} {resource.unit}")
+async def _collect_hardware_components(db: AsyncSession, client: httpx.AsyncClient):
+    """Сбор метрик для HardwareComponent"""
+    result = await db.execute(
+        select(HardwareComponent)
+        .join(Node)
+        .where(HardwareComponent.is_active == True)
+    )
+    components = result.scalars().all()
+    
+    for comp in components:
+        try:
+            value = await _query_prometheus(client, comp.metric_query)
+            if value is not None:
+                record = MetricValue(
+                    resource_id=None,          # ← явно None
+                    hardware_id=comp.id,       # ← только hardware_id
+                    value=value,
+                    timestamp=datetime.utcnow()
+                )
+                db.add(record)
+                
+                # Обновляем current_usage для быстрого отображения
+                comp.current_usage = value
+                comp.current_usage_unit = _get_usage_unit(comp.metric_query, comp.max_capacity_unit)
+                
+        except Exception as e:
+            print(f"Error collecting component {comp.name}: {e}")
 
-                    record = MetricValue(
-                        resource_id=resource.id,
-                        value=value,
-                        timestamp=datetime.utcnow()
-                    )
-                    db.add(record)
-                else:
-                    print(f"[WARN] Нет данных для {resource.name}")
 
-            except Exception as e:
-                print(f"[ERROR] Ошибка сбора {resource.name}: {e}")
+def _get_usage_unit(metric_query: str, default_unit: str | None) -> str:
+    """Определяет единицу измерения для current_usage"""
+    # Если запрос возвращает проценты
+    if "* 100" in metric_query or "100 -" in metric_query:
+        return "%"
+    # Если запрос возвращает байты/сек (сетевой трафик)
+    if "rate(" in metric_query and "bytes" in metric_query:
+        return "B/s"
+    # Иначе используем дефолтную единицу
+    return default_unit or ""
 
-    await db.commit()
+
+async def _query_prometheus(client: httpx.AsyncClient, query: str) -> float | None:
+    """Выполняет PromQL-запрос и возвращает числовое значение"""
+    try:
+        response = await client.get(
+            f"{PROMETHEUS_URL}/api/v1/query",
+            params={"query": query}
+        )
+        data = response.json()
+        
+        if data.get("status") != "success" or not data["data"]["result"]:
+            return None
+        
+        # Берём первое значение из результата
+        value = float(data["data"]["result"][0]["value"][1])
+        return round(value, 2)
+        
+    except Exception as e:
+        print(f"Prometheus query error: {e}")
+        return None

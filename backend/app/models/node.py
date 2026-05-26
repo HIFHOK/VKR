@@ -15,3 +15,4 @@ class Node(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     resources = relationship("Resource", back_populates="node")
+    hardware = relationship("HardwareComponent", back_populates="node", cascade="all, delete-orphan")

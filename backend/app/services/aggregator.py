@@ -1,55 +1,62 @@
-from datetime import datetime, timedelta
-from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.metric import MetricValue, AggregatedData
-from app.models.resource import Resource
+from sqlalchemy import select, and_, delete
+from datetime import datetime, timedelta
+from app.models.metric import MetricValue
+from app.models.hardware import HardwareComponent
+from app.models.aggregated import AggregatedData
 
 
-async def aggregate_metrics(db: AsyncSession, period_hours: int = 1):
+async def aggregate_metrics(db: AsyncSession, hours: int = 1) -> int:
     """
-    Агрегирует метрики за указанный период.
-    Считает MIN, MAX, AVG, COUNT для каждого ресурса.
+    Агрегация метрик с фиксированными часовыми окнами.
+    Гарантирует отсутствие дублей при повторных вызовах.
     """
-    since = datetime.utcnow() - timedelta(hours=period_hours)
+    end_time = datetime.utcnow()
     
-    # Выполняем агрегирующий запрос
+    # 🔑 Выравниваем границы периода по началу часа (например, 13:00:00, 14:00:00)
+    period_end = end_time.replace(minute=0, second=0, microsecond=0)
+    period_start = period_end - timedelta(hours=hours)
+
     result = await db.execute(
-        select(
-            MetricValue.resource_id,
-            func.min(MetricValue.value).label("min_value"),
-            func.max(MetricValue.value).label("max_value"),
-            func.avg(MetricValue.value).label("avg_value"),
-            func.count(MetricValue.id).label("count")
-        )
-        .where(MetricValue.timestamp >= since)
-        .group_by(MetricValue.resource_id)
+        select(HardwareComponent).where(HardwareComponent.is_active == True)
     )
-    
-    # Получаем все строки результата
-    rows = result.all()
-    aggregated_count = 0
-    
-    for row in rows:
-        # Пропускаем пустые агрегации
-        if row.count == 0:
-            continue
-            
-        agg = AggregatedData(
-            resource_id=row.resource_id,
-            period_start=since,
-            period_end=datetime.utcnow(),
-            min_value=float(row.min_value) if row.min_value is not None else None,
-            max_value=float(row.max_value) if row.max_value is not None else None,
-            avg_value=float(row.avg_value) if row.avg_value is not None else None,
-            sample_count=row.count
+    components = result.scalars().all()
+
+    count = 0
+    for comp in components:
+        metrics_result = await db.execute(
+            select(MetricValue).where(
+                and_(
+                    MetricValue.hardware_id == comp.id,
+                    MetricValue.timestamp >= period_start,
+                    MetricValue.timestamp < period_end
+                )
+            )
         )
-        db.add(agg)
-        aggregated_count += 1
-    
-    try:
-        await db.commit()
-        print(f"[AGGREGATOR] Агрегировано ресурсов: {aggregated_count}")
-    except Exception as e:
-        print(f"[AGGREGATOR ERROR] Ошибка при сохранении: {e}")
-        await db.rollback()
-        raise
+        values = [m.value for m in metrics_result.scalars().all() if m.value is not None]
+
+        if len(values) >= 2:
+            # Удаляем старую запись за этот же период (если есть)
+            await db.execute(
+                delete(AggregatedData).where(
+                    and_(
+                        AggregatedData.hardware_id == comp.id,
+                        AggregatedData.period_start == period_start
+                    )
+                )
+            )
+
+            agg = AggregatedData(
+                hardware_id=comp.id,
+                period_start=period_start,
+                period_end=period_end,
+                min_value=min(values),
+                max_value=max(values),
+                avg_value=sum(values) / len(values),
+                record_count=len(values)
+            )
+            db.add(agg)
+            count += 1
+
+    await db.commit()
+    return count

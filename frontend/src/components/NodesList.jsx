@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { api } from '../api.js'
 
-export default function NodesList() {
+export default function NodesList({ onNodesUpdate, onSelectNode }) {
   const [nodes, setNodes] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({ name: '', address: '', type: 'vm' })
@@ -12,7 +12,13 @@ export default function NodesList() {
   const loadNodes = async () => {
     try {
       const data = await api.getNodes()
-      setNodes(Array.isArray(data) ? data : [])
+      const list = Array.isArray(data) ? data : []
+      setNodes(list)
+      
+      // Отправляем список в родительский компонент (App.jsx)
+      if (typeof onNodesUpdate === 'function') {
+        onNodesUpdate(list)
+      }
     } catch (e) {
       console.error('Failed to load nodes:', e)
     }
@@ -22,14 +28,23 @@ export default function NodesList() {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.createNode(formData)
+      const newNode = await api.createNode(formData)
       setFormData({ name: '', address: '', type: 'vm' })
       setShowForm(false)
+
+      await api.discoverHardware(newNode.id)
+      
       await loadNodes()
+      
+      // Автоматически выбираем созданный узел в других вкладках
+      if (typeof onSelectNode === 'function' && newNode?.id) {
+        onSelectNode(newNode.id)
+      }
     } catch (e) {
       alert('Failed to create node')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleDelete = async (id, name) => {

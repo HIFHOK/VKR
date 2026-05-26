@@ -10,5 +10,9 @@ scrape_configs:
     static_configs:
       - targets: ['host.docker.internal:9100']
         labels:
-          instance: 'dev-vm-01'
+          instance: 'main-host'
+          environment: 'development'
+      - targets: ['192.168.1.14:9100']
+        labels:
+          instance: 'test-vm-01'
           environment: 'development'
