@@ -54,11 +54,11 @@ export const api = {
   },
 
   async aggregateMetrics(period = 1) {
-    const res = await fetch(`${API_BASE}/aggregate?period=${period}`, {
-      method: 'POST'
-    })
-    if (!res.ok) throw new Error('Failed to aggregate')
-    return res.json()
+  const res = await fetch(`${API_BASE}/aggregate?period=${period}`, {
+    method: 'POST'
+  })
+  if (!res.ok) throw new Error('Failed to aggregate')
+  return res.json()
   },
 
   async getHardware(nodeId, type = null) {

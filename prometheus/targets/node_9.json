@@ -1,0 +1,12 @@
+[
+  {
+    "targets": [
+      "192.168.1.15:9100"
+    ],
+    "labels": {
+      "instance": "auto-vm-final",
+      "environment": "development",
+      "node_id": "9"
+    }
+  }
+]

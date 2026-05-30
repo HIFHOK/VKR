@@ -22,6 +22,11 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - promdata:/prometheus
+      - ./prometheus/targets:/etc/prometheus/targets
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -59,6 +64,7 @@ services:
       - PROMETHEUS_URL=http://prometheus:9090
     volumes:
       - ./backend:/app
+      - ./prometheus/targets:/etc/prometheus/targets
     depends_on:
       - postgres
       - prometheus

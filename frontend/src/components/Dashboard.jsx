@@ -2,19 +2,17 @@ import React, { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { api } from '../api.js'
 
-export default function Dashboard() {
-  const [nodes, setNodes] = useState([])
-  const [selectedNode, setSelectedNode] = useState(null)
+export default function Dashboard({ selectedNode, onNodeSelect }) {
   const [resources, setResources] = useState([])
   const [metricsData, setMetricsData] = useState({})
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => { loadNodes() }, [])
-
+  // Загружаем ресурсы при изменении выбранного узла
   useEffect(() => {
     if (selectedNode) loadResources(selectedNode)
   }, [selectedNode])
 
+  // Авто-обновление метрик
   useEffect(() => {
     if (resources.length > 0) {
       loadAllMetrics()
@@ -22,19 +20,6 @@ export default function Dashboard() {
       return () => clearInterval(interval)
     }
   }, [resources])
-
-  const loadNodes = async () => {
-    try {
-      const data = await api.getNodes()
-      const nodesList = Array.isArray(data) ? data : []
-      setNodes(nodesList)
-      if (nodesList.length > 0 && !selectedNode) {
-        setSelectedNode(nodesList[0].id)
-      }
-    } catch (e) {
-      console.error('Failed to load nodes:', e)
-    }
-  }
 
   const loadResources = async (nodeId) => {
     try {
@@ -89,6 +74,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Кнопки управления */}
       <div className="flex gap-3">
         <button
           onClick={handleCollect}
@@ -106,45 +92,39 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {nodes.length > 1 && (
-        <div>
-          <label className="text-sm text-gray-400">Select Node:</label>
-          <select
-            value={selectedNode || ''}
-            onChange={(e) => setSelectedNode(parseInt(e.target.value))}
-            className="ml-2 bg-gray-800 border border-gray-700 rounded px-3 py-1"
-          >
-            {nodes.map(n => (
-              <option key={n.id} value={n.id}>{n.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {resources.map(resource => {
-          const data = metricsData[resource.id]
-          const stats = data?.stats
-          const currentValue = data?.history?.[0]?.value
+            {/* Карточки метрик (с гарантированным порядком: CPU → RAM → Disk → Network) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {(() => {
+          const typeOrder = { cpu: 1, memory: 2, disk: 3, network: 4 };
+          const sortedResources = [...resources].sort((a, b) => 
+            (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99)
+          );
           
-          return (
-            <div key={resource.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-              <div className="text-sm text-gray-400">{resource.name}</div>
-              <div className="text-3xl font-bold mt-2">
-                {currentValue !== undefined ? currentValue.toFixed(2) : '--'}{' '}
-                <span className="text-lg text-gray-400">{resource.unit}</span>
-              </div>
-              {stats && (
-                <div className="mt-3 text-xs text-gray-500 space-y-1">
-                  <div>Min: {stats.min?.toFixed(2) || '-'} | Max: {stats.max?.toFixed(2) || '-'}</div>
-                  <div>Avg: {stats.avg?.toFixed(2) || '-'} | Records: {stats.records}</div>
+          return sortedResources.map(resource => {
+            const data = metricsData[resource.id];
+            const stats = data?.stats;
+            const currentValue = data?.history?.[0]?.value;
+            
+            return (
+              <div key={resource.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="text-sm text-gray-400">{resource.name}</div>
+                <div className="text-3xl font-bold mt-2">
+                  {currentValue !== undefined ? currentValue.toFixed(2) : '--'}{' '}
+                  <span className="text-lg text-gray-400">{resource.unit}</span>
                 </div>
-              )}
-            </div>
-          )
-        })}
+                {stats && (
+                  <div className="mt-3 text-xs text-gray-500 space-y-1">
+                    <div>Min: {stats.min?.toFixed(2) || '-'} | Max: {stats.max?.toFixed(2) || '-'}</div>
+                    <div>Avg: {stats.avg?.toFixed(2) || '-'} | Records: {stats.records}</div>
+                  </div>
+                )}
+              </div>
+            );
+          });
+        })()}
       </div>
 
+      {/* Графики */}
       {resources.map(resource => {
         const history = metricsData[resource.id]?.history || []
         const chartData = history
@@ -180,9 +160,15 @@ export default function Dashboard() {
         )
       })}
 
-      {resources.length === 0 && (
+      {resources.length === 0 && selectedNode && (
         <div className="text-center py-12 text-gray-500">
-          No resources configured. Go to Nodes tab to add some.
+          No resources configured for this node.
+        </div>
+      )}
+
+      {!selectedNode && (
+        <div className="text-center py-12 text-gray-500">
+          <p className="mb-2">Select a node from the dropdown above</p>
         </div>
       )}
     </div>

@@ -10,15 +10,21 @@ PROMETHEUS_URL = "http://prometheus:9090"
 
 async def _get_node_instance(db: AsyncSession, node_id: int) -> str:
     """
-    Получает метку instance для Prometheus по ID узла.
-    Формат: <address>:9100 (например, "192.168.1.14:9100")
+    Получает метку instance для Prometheus.
+    Если задан prometheus_instance — используем его, иначе формируем из адреса.
     """
+    from sqlalchemy import select
+    from app.models.node import Node
+    
     node = await db.get(Node, node_id)
     if not node:
         raise ValueError(f"Node {node_id} not found")
     
-    # Просто формируем instance из адреса узла
-    # Это соответствует формату в prometheus.yml
+    # 🔥 Если задан кастомный instance (из prometheus.yml), используем его
+    if hasattr(node, 'prometheus_instance') and node.prometheus_instance:
+        return node.prometheus_instance
+    
+    # Иначе формируем из адреса
     return f"{node.address}:9100"
 
 
