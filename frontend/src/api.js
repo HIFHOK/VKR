@@ -54,11 +54,11 @@ export const api = {
   },
 
   async aggregateMetrics(period = 1) {
-  const res = await fetch(`${API_BASE}/aggregate?period=${period}`, {
-    method: 'POST'
-  })
-  if (!res.ok) throw new Error('Failed to aggregate')
-  return res.json()
+    const res = await fetch(`${API_BASE}/aggregation/aggregate?period=${period}`, {
+      method: 'POST'
+    })
+    if (!res.ok) throw new Error('Failed to aggregate')
+    return res.json()
   },
 
   async getHardware(nodeId, type = null) {
@@ -97,12 +97,12 @@ export const api = {
   },
 
   async exportAggregatedData(nodeId, period = 24) {
-    const url = `${API_BASE}/nodes/${nodeId}/aggregated/export?period=${period}`
-    console.log('Exporting from:', url)  // Для отладки
-    
+    const url = `${API_BASE}/aggregation/nodes/${nodeId}/aggregated/export?period=${period}`
+    console.log('Exporting from:', url)
+  
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Export failed: ${res.statusText}`)
-    
+  
     const blob = await res.blob()
     const downloadUrl = window.URL.createObjectURL(blob)
     const a = document.createElement('a')

@@ -1,0 +1,12 @@
+[
+  {
+    "targets": [
+      "192.168.1.14:9100"
+    ],
+    "labels": {
+      "instance": "test-2",
+      "environment": "development",
+      "node_id": "14"
+    }
+  }
+]

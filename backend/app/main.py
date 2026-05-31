@@ -25,7 +25,7 @@ app.include_router(nodes.router, prefix=settings.API_V1_PREFIX, tags=["nodes"])
 app.include_router(resources.router, prefix=settings.API_V1_PREFIX, tags=["resources"])
 app.include_router(metrics.router, prefix=settings.API_V1_PREFIX + "/metrics", tags=["metrics"])
 app.include_router(hardware.router, prefix=settings.API_V1_PREFIX + "/hardware", tags=["hardware"])  # ← ВАЖНО: prefix с /metrics!
-app.include_router(aggregation.router, prefix=settings.API_V1_PREFIX, tags=["aggregation"])
+app.include_router(aggregation.router, prefix=f"{settings.API_V1_PREFIX}/aggregation", tags=["aggregation"])
 
 @app.on_event("startup")
 async def startup_db():

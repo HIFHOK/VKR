@@ -74,10 +74,11 @@ async def export_aggregated_data(
     period: int = Query(24, ge=1, le=168),
     db: AsyncSession = Depends(get_db)
 ):
-    """Экспорт агрегированных данных узла в CSV"""
+    """Экспорт агрегированных данных узла в CSV (Excel-compatible)"""
     # Проверка узла
     node_res = await db.execute(select(Node).where(Node.id == node_id))
-    if not node_res.scalar_one_or_none():
+    node = node_res.scalar_one_or_none()
+    if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     
     end_time = datetime.utcnow()
@@ -99,33 +100,50 @@ async def export_aggregated_data(
     if not rows:
         raise HTTPException(status_code=404, detail="No aggregated data found for this period")
     
-    # Генерация CSV
+    # 🔥 Генерация CSV с разделителем ";" для Excel
     stream = io.StringIO()
-    writer = csv.writer(stream)
+    writer = csv.writer(stream, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+    
+    # Заголовок
     writer.writerow([
-        "Component ID", "Component Name", "Type",
-        "Period Start", "Period End",
-        "Min Value", "Max Value", "Avg Value", "Record Count"
+        "Node Name",
+        "Component ID", 
+        "Component Name", 
+        "Type",
+        "Period Start", 
+        "Period End",
+        "Min Value", 
+        "Max Value", 
+        "Avg Value", 
+        "Record Count"
     ])
     
+    # Данные
     for hw, agg in rows:
         writer.writerow([
+            node.name,
             hw.component_id,
             hw.name,
             hw.component_type,
             agg.period_start.strftime("%Y-%m-%d %H:%M:%S"),
             agg.period_end.strftime("%Y-%m-%d %H:%M:%S"),
-            round(agg.min_value, 2),
-            round(agg.max_value, 2),
-            round(agg.avg_value, 2),
+            str(round(agg.min_value, 2)).replace('.', ','),  # 🔥 Запятая для десятичных
+            str(round(agg.max_value, 2)).replace('.', ','),
+            str(round(agg.avg_value, 2)).replace('.', ','),
             agg.record_count
         ])
     
-    csv_data = stream.getvalue()
-    filename = f"aggregated_node_{node_id}_period_{period}h.csv"
+    csv_content = stream.getvalue()
+    
+    # 🔥 Добавляем UTF-8 BOM для Excel
+    csv_data_with_bom = '\ufeff' + csv_content
+    
+    filename = f"aggregated_{node.name}_period_{period}h.csv"
     
     return Response(
-        content=csv_data,
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        content=csv_data_with_bom,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
     )

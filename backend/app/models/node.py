@@ -18,5 +18,5 @@ class Node(Base):
     prometheus_instance = Column(String(255), nullable=True)
     
     # Relationships
-    resources = relationship("Resource", back_populates="node")
+    resources = relationship("Resource", back_populates="node", cascade="all, delete-orphan")
     hardware = relationship("HardwareComponent", back_populates="node", cascade="all, delete-orphan")
