@@ -13,10 +13,7 @@ class Node(Base):
     status = Column(String(20), default="active")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    
-    # 🔥 ДОБАВЬТЕ ЭТО ПОЛЕ:
     prometheus_instance = Column(String(255), nullable=True)
     
-    # Relationships
     resources = relationship("Resource", back_populates="node", cascade="all, delete-orphan")
     hardware = relationship("HardwareComponent", back_populates="node", cascade="all, delete-orphan")
