@@ -19,7 +19,7 @@ class HardwareComponentResponse(HardwareComponentBase):
     id: int
     node_id: int
     current_usage: Optional[float] = None
-    current_usage_unit: Optional[str] = None  # ← Обязательно добавьте это поле!
+    current_usage_unit: Optional[str] = None
     is_active: bool
     discovered_at: datetime
     updated_at: Optional[datetime] = None
