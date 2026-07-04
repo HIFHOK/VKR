@@ -20,11 +20,9 @@ async def _get_node_instance(db: AsyncSession, node_id: int) -> str:
     if not node:
         raise ValueError(f"Node {node_id} not found")
     
-    # 🔥 Если задан кастомный instance (из prometheus.yml), используем его
     if hasattr(node, 'prometheus_instance') and node.prometheus_instance:
         return node.prometheus_instance
     
-    # Иначе формируем из адреса
     return f"{node.address}:9100"
 
 
@@ -44,7 +42,6 @@ async def _discover_cpus(db: AsyncSession, node_id: int, client: httpx.AsyncClie
     
     default_freq_ghz = settings.cpu_max_frequency_ghz
     
-    # ✅ ДОБАВЛЕНО: filter by instance!
     cores_query = f'count by (cpu) (node_cpu_seconds_total{{instance="{instance}",mode="idle"}})'
     response = await client.get(f"{PROMETHEUS_URL}/api/v1/query?query={cores_query}")
     data = response.json()
@@ -72,7 +69,6 @@ async def _discover_cpus(db: AsyncSession, node_id: int, client: httpx.AsyncClie
             name=f"CPU Core #{cpu_num}",
             max_capacity=default_freq_ghz,
             max_capacity_unit="GHz" if default_freq_ghz else None,
-            # ✅ ДОБАВЛЕНО: instance в metric_query
             metric_query=f'100 - (avg by (cpu) (rate(node_cpu_seconds_total{{cpu="{cpu_num}",mode="idle",instance="{instance}"}}[1m])) * 100)',
             component_metadata={"frequency_ghz": default_freq_ghz} if default_freq_ghz else {}
         )
@@ -80,7 +76,6 @@ async def _discover_cpus(db: AsyncSession, node_id: int, client: httpx.AsyncClie
 
 
 async def _discover_ram(db: AsyncSession, node_id: int, client: httpx.AsyncClient, instance: str):
-    # ✅ ДОБАВЛЕНО: filter by instance
     query = f'node_memory_MemTotal_bytes{{instance="{instance}"}}'
     response = await client.get(f"{PROMETHEUS_URL}/api/v1/query?query={query}")
     data = response.json()
@@ -109,7 +104,6 @@ async def _discover_ram(db: AsyncSession, node_id: int, client: httpx.AsyncClien
         name="System RAM",
         max_capacity=total_gb,
         max_capacity_unit="GB",
-        # ✅ ДОБАВЛЕНО: instance в metric_query
         metric_query=f'(1 - (node_memory_MemAvailable_bytes{{instance="{instance}"}} / node_memory_MemTotal_bytes{{instance="{instance}"}})) * 100',
         component_metadata={"total_bytes": total_bytes}
     )
@@ -117,7 +111,6 @@ async def _discover_ram(db: AsyncSession, node_id: int, client: httpx.AsyncClien
 
 
 async def _discover_disks(db: AsyncSession, node_id: int, client: httpx.AsyncClient, instance: str):
-    # ✅ ДОБАВЛЕНО: filter by instance
     query = f'node_filesystem_size_bytes{{instance="{instance}",fstype!~"tmpfs|squashfs"}}'
     response = await client.get(f"{PROMETHEUS_URL}/api/v1/query?query={query}")
     data = response.json()
@@ -151,7 +144,6 @@ async def _discover_disks(db: AsyncSession, node_id: int, client: httpx.AsyncCli
             name=f"Disk {mountpoint} ({device})",
             max_capacity=size_gb,
             max_capacity_unit="GB",
-            # ✅ ДОБАВЛЕНО: instance в metric_query
             metric_query=f'(1 - (node_filesystem_avail_bytes{{instance="{instance}",mountpoint="{mountpoint}"}} / node_filesystem_size_bytes{{instance="{instance}",mountpoint="{mountpoint}"}})) * 100',
             component_metadata={"device": device, "mountpoint": mountpoint, "size_bytes": size_bytes}
         )
@@ -160,7 +152,6 @@ async def _discover_disks(db: AsyncSession, node_id: int, client: httpx.AsyncCli
 
 async def _discover_network(db: AsyncSession, node_id: int, client: httpx.AsyncClient, instance: str):
     """Обнаружение сетевых интерфейсов (только физические)"""
-    # ✅ ДОБАВЛЕНО: filter by instance
     query = f'node_network_speed_bytes{{instance="{instance}",device!~"lo|virbr.*|docker.*|veth.*|br-.*"}}'
     response = await client.get(f"{PROMETHEUS_URL}/api/v1/query?query={query}")
     data = response.json()
@@ -190,7 +181,6 @@ async def _discover_network(db: AsyncSession, node_id: int, client: httpx.AsyncC
         if exists.scalar_one_or_none():
             continue
         
-        # Исправлено: metadata → component_metadata (согласовано с другими компонентами)
         component = HardwareComponent(
             node_id=node_id,
             component_type="network",
@@ -198,7 +188,6 @@ async def _discover_network(db: AsyncSession, node_id: int, client: httpx.AsyncC
             name=f"Network Interface {device}",
             max_capacity=speed_gbps,
             max_capacity_unit="Gbps",
-            # ✅ ДОБАВЛЕНО: instance в metric_query
             metric_query=f'rate(node_network_receive_bytes_total{{instance="{instance}",device="{device}"}}[1m])',
             component_metadata={"device": device, "speed_bytes": speed_bytes}
         )
