@@ -3,7 +3,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { api } from '../api.js'
 
 export default function HardwareList({ nodeId }) {
-  // 🔥 Отладка: проверяем nodeId
   useEffect(() => {
     console.log('[HW] nodeId =', nodeId, 'type:', typeof nodeId)
   }, [nodeId])
@@ -128,22 +127,19 @@ export default function HardwareList({ nodeId }) {
     return 'bg-green-500'
   }
 
-  // 🔥 Ранний возврат если нет nodeId или есть ошибка
   if (!nodeId) return <div className="p-4 text-gray-400">Select a node first.</div>
   if (error) return <div className="p-4 text-red-400 bg-red-900/20 rounded">{error}</div>
 
-  // 🔥 Безопасное вычисление filtered
   const componentsArray = Array.isArray(components) ? components : []
   const filtered = filter === 'all' 
     ? componentsArray 
     : componentsArray.filter(c => c?.component_type === filter)
 
-  // 🔥 Отладка перед рендером
   console.log('[RENDER] filtered.length =', filtered?.length, 'loading =', loading)
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Заголовок */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white">Hardware Inventory</h2>
@@ -178,12 +174,11 @@ export default function HardwareList({ nodeId }) {
         </div>
       </div>
 
-      {/* Cards Grid */}
+      {/* Карточки */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered && filtered.length > 0 ? (
           filtered.map((comp, idx) => {
             try {
-              // 🔥 Безопасное приведение типов
               const usage = Number(comp?.current_usage) || 0
               const isPercent = comp?.metric_query && (comp.metric_query.includes('* 100') || comp.metric_query.includes('100 -'))
               const displayVal = comp?.current_usage != null
@@ -195,7 +190,6 @@ export default function HardwareList({ nodeId }) {
               const statusColor = getStatusColor(usagePercent)
               const isSelected = selectedComponent === comp?.id
 
-              // 🔥 Отладка рендера каждой карточки
               console.log(`[RENDER] Card #${idx}:`, comp?.name, 'usage:', usage)
 
               return (
@@ -250,7 +244,7 @@ export default function HardwareList({ nodeId }) {
             }
           })
         ) : (
-          /* Empty state */
+          /* Пустота */
           <div className="col-span-full text-center py-12 text-gray-500 border border-dashed border-gray-700 rounded-lg">
             <p className="mb-2">
               {loading ? 'Loading components...' : 'No components found'}
@@ -264,7 +258,7 @@ export default function HardwareList({ nodeId }) {
         )}
       </div>
 
-      {/* Graph Panel */}
+      {/* Графики */}
       {selectedComponent && (
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex justify-between items-center mb-4">
