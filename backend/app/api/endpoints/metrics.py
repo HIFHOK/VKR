@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.db.session import get_db
 from app.models.metric import MetricValue
-#from app.models.aggregated import AggregatedData
 from app.services.aggregator import aggregate_metrics
 
 router = APIRouter()
@@ -49,14 +48,3 @@ async def trigger_aggregation(period_hours: int = 1, db: AsyncSession = Depends(
     """Ручной запуск агрегации метрик"""
     await aggregate_metrics(db, period_hours=period_hours)
     return {"status": "Aggregation finished", "period_hours": period_hours}
-
-#@router.get("/{resource_id}/aggregated")
-#async def get_aggregated_data(hardware_id: int, db: AsyncSession = Depends(get_db)):
-#    """Получение агрегированных данных"""
-#    result = await db.execute(
-#        select(AggregatedData)
-#        .where(AggregatedData.hardware_id == hardware_id)
-#        .order_by(AggregatedData.period_end.desc())
-#        .limit(50)
-#    )
-#    return result.scalars().all()
