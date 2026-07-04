@@ -75,7 +75,6 @@ async def export_aggregated_data(
     db: AsyncSession = Depends(get_db)
 ):
     """Экспорт агрегированных данных узла в CSV (Excel-compatible)"""
-    # Проверка узла
     node_res = await db.execute(select(Node).where(Node.id == node_id))
     node = node_res.scalar_one_or_none()
     if not node:
@@ -84,7 +83,6 @@ async def export_aggregated_data(
     end_time = datetime.utcnow()
     start_time = end_time - timedelta(hours=period)
     
-    # Получаем данные: компонент + агрегация
     result = await db.execute(
         select(HardwareComponent, AggregatedData)
         .join(AggregatedData, HardwareComponent.id == AggregatedData.hardware_id)
@@ -100,11 +98,9 @@ async def export_aggregated_data(
     if not rows:
         raise HTTPException(status_code=404, detail="No aggregated data found for this period")
     
-    # 🔥 Генерация CSV с разделителем ";" для Excel
     stream = io.StringIO()
     writer = csv.writer(stream, delimiter=';', quoting=csv.QUOTE_MINIMAL)
     
-    # Заголовок
     writer.writerow([
         "Node Name",
         "Component ID", 
@@ -118,7 +114,6 @@ async def export_aggregated_data(
         "Record Count"
     ])
     
-    # Данные
     for hw, agg in rows:
         writer.writerow([
             node.name,
@@ -127,7 +122,7 @@ async def export_aggregated_data(
             hw.component_type,
             agg.period_start.strftime("%Y-%m-%d %H:%M:%S"),
             agg.period_end.strftime("%Y-%m-%d %H:%M:%S"),
-            str(round(agg.min_value, 2)).replace('.', ','),  # 🔥 Запятая для десятичных
+            str(round(agg.min_value, 2)).replace('.', ','),
             str(round(agg.max_value, 2)).replace('.', ','),
             str(round(agg.avg_value, 2)).replace('.', ','),
             agg.record_count
@@ -135,7 +130,6 @@ async def export_aggregated_data(
     
     csv_content = stream.getvalue()
     
-    # 🔥 Добавляем UTF-8 BOM для Excel
     csv_data_with_bom = '\ufeff' + csv_content
     
     filename = f"aggregated_{node.name}_period_{period}h.csv"
