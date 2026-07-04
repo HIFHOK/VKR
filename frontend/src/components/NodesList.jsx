@@ -15,7 +15,6 @@ export default function NodesList({ onNodesUpdate, onSelectNode }) {
       const list = Array.isArray(data) ? data : []
       setNodes(list)
       
-      // Отправляем список в родительский компонент (App.jsx)
       if (typeof onNodesUpdate === 'function') {
         onNodesUpdate(list)
       }
@@ -36,7 +35,6 @@ export default function NodesList({ onNodesUpdate, onSelectNode }) {
       
       await loadNodes()
       
-      // Автоматически выбираем созданный узел в других вкладках
       if (typeof onSelectNode === 'function' && newNode?.id) {
         onSelectNode(newNode.id)
       }
