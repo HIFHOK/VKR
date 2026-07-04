@@ -21,14 +21,12 @@ class HardwareComponent(Base):
     
     metric_query = Column(String(500), nullable=False)
     
-    # ← Исправлено: metadata → component_metadata (reserved word in SQLAlchemy)
     component_metadata = Column("metadata", JSON, default=dict)
     
     is_active = Column(Boolean, default=True)
     discovered_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Связь с узлом
     node = relationship("Node", back_populates="hardware")
     metrics = relationship("MetricValue", back_populates="hardware", cascade="all, delete-orphan")
     aggregated_metrics = relationship("AggregatedData", back_populates="hardware", cascade="all, delete-orphan")
