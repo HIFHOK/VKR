@@ -7,12 +7,10 @@ export default function Dashboard({ selectedNode, onNodeSelect }) {
   const [metricsData, setMetricsData] = useState({})
   const [loading, setLoading] = useState(false)
 
-  // Загружаем ресурсы при изменении выбранного узла
   useEffect(() => {
     if (selectedNode) loadResources(selectedNode)
   }, [selectedNode])
 
-  // Авто-обновление метрик
   useEffect(() => {
     if (resources.length > 0) {
       loadAllMetrics()
@@ -92,7 +90,7 @@ export default function Dashboard({ selectedNode, onNodeSelect }) {
         </button>
       </div>
 
-            {/* Карточки метрик (с гарантированным порядком: CPU → RAM → Disk → Network) */}
+            {/* Карточки метрик */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {(() => {
           const typeOrder = { cpu: 1, memory: 2, disk: 3, network: 4 };
