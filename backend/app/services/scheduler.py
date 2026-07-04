@@ -22,5 +22,4 @@ async def scheduled_collect(interval_seconds: int = 300):
         except Exception as e:
             logger.error(f"[SCHEDULER] Ошибка сбора метрик: {e}")
         
-        # Ждем интервал даже если была ошибка
         await asyncio.sleep(interval_seconds)
