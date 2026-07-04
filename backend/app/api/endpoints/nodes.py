@@ -45,7 +45,7 @@ def _create_prometheus_target_file(node_id: int, address: str, instance_name: st
         with open(filepath, 'w') as f:
             json.dump(target_data, f, indent=2)
     except Exception as e:
-        print(f"❌ ERROR: Could not create Prometheus target file: {e}")
+        print(f"ERROR: Could not create Prometheus target file: {e}")
 
 def _delete_prometheus_target_file(node_id: int):
     filename = f"node_{node_id}.json"
@@ -54,7 +54,7 @@ def _delete_prometheus_target_file(node_id: int):
         if os.path.exists(filepath):
             os.remove(filepath)
     except Exception as e:
-        print(f"⚠️ Warning: Could not delete Prometheus target file: {e}")
+        print(f"Warning: Could not delete Prometheus target file: {e}")
 
 def _create_default_resources(node_id: int, instance_name: str):
     return [
@@ -80,40 +80,32 @@ def _create_default_resources(node_id: int, instance_name: str):
 async def create_node(node_in: NodeCreate, db: AsyncSession = Depends(get_db)):
     """Создание узла + автоматическая настройка мониторинга"""
     
-    # 1. Проверка уникальности имени
     result = await db.execute(select(Node).where(Node.name == node_in.name))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Node with this name already exists")
     
-    # 2. Создаём узел в БД
     db_node = Node(**node_in.model_dump())
     
-    # 🔥 АВТОМАТИЧЕСКИ устанавливаем prometheus_instance = имя узла
     db_node.prometheus_instance = node_in.name
     
     db.add(db_node)
     await db.flush()
     
-    # 3. Формируем instance-метку
     instance_name = node_in.name
     
-    # 4. Создаём файл для Prometheus File SD
     _create_prometheus_target_file(db_node.id, node_in.address, instance_name)
     
-    # 5. Создаём стандартные ресурсы для Dashboard
     for resource in _create_default_resources(db_node.id, instance_name):
         db.add(resource)
     
-    # 6. Сохраняем всё в БД
     await db.commit()
     await db.refresh(db_node)
     
-    # 7. Запускаем авто-обнаружение железа (асинхронно)
     try:
         import asyncio
         asyncio.create_task(discover_hardware(db, db_node.id))
     except Exception as e:
-        print(f"⚠️ Warning: Could not trigger hardware discovery: {e}")
+        print(f"Warning: Could not trigger hardware discovery: {e}")
     
     return db_node
 
