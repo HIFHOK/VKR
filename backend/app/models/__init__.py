@@ -1,4 +1,3 @@
-# Регистрация всех моделей в SQLAlchemy MetaData
 from app.models.node import Node
 from app.models.resource import Resource
 from app.models.metric import MetricValue
