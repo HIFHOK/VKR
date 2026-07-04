@@ -10,7 +10,6 @@ from app.api.endpoints import health, nodes, metrics, resources, hardware, aggre
 
 app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,12 +18,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Подключаем роутеры
 app.include_router(health.router, prefix=settings.API_V1_PREFIX, tags=["health"])
 app.include_router(nodes.router, prefix=settings.API_V1_PREFIX, tags=["nodes"])
 app.include_router(resources.router, prefix=settings.API_V1_PREFIX, tags=["resources"])
 app.include_router(metrics.router, prefix=settings.API_V1_PREFIX + "/metrics", tags=["metrics"])
-app.include_router(hardware.router, prefix=settings.API_V1_PREFIX + "/hardware", tags=["hardware"])  # ← ВАЖНО: prefix с /metrics!
+app.include_router(hardware.router, prefix=settings.API_V1_PREFIX + "/hardware", tags=["hardware"])
 app.include_router(aggregation.router, prefix=f"{settings.API_V1_PREFIX}/aggregation", tags=["aggregation"])
 
 @app.on_event("startup")
