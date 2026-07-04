@@ -21,16 +21,13 @@ async def trigger_hardware_discovery(
     Запустить автообнаружение аппаратных компонентов для узла.
     Сканирует Prometheus и создаёт записи для CPU, RAM, Disk, Network.
     """
-    # Проверка существования узла
     result = await db.execute(select(Node).where(Node.id == node_id))
     node = result.scalar_one_or_none()
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     
-    # Запуск обнаружения
     await discover_hardware(db, node_id)
     
-    # Возврат списка компонентов
     result = await db.execute(
         select(HardwareComponent).where(
             HardwareComponent.node_id == node_id,
@@ -83,7 +80,6 @@ async def get_component_metrics(
     )
     metrics = result.scalars().all()
     
-    # Возвращаем в прямом порядке (от старых к новым)
     return [
         {
             "id": m.id,
@@ -114,17 +110,13 @@ async def get_hardware_summary(node_id: int, db: AsyncSession = Depends(get_db))
     }
     
     for comp in components:
-        # Вычисляем процент использования
         usage_percent = None
         if comp.current_usage is not None:
             if comp.metric_query and ("* 100" in comp.metric_query or "100 -" in comp.metric_query):
-                # Метрика уже в процентах
                 usage_percent = min(comp.current_usage, 100)
             elif comp.max_capacity and comp.max_capacity > 0:
-                # Считаем процент от максимума
                 usage_percent = min((comp.current_usage / comp.max_capacity) * 100, 100)
         
-        # Определяем статус
         if usage_percent is None:
             status_level = "unknown"
         elif usage_percent >= 90:
