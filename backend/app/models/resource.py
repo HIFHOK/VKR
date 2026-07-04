@@ -14,7 +14,5 @@ class Resource(Base):
     metric_query = Column(String(200), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Связи
     node = relationship("Node", back_populates="resources")
-    # ← ВАЖНО: "metrics" (множественное), back_populates="resource" (единственное, как в MetricValue)
     metrics = relationship("MetricValue", back_populates="resource", cascade="all, delete-orphan")
