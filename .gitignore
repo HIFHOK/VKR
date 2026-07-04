@@ -28,7 +28,7 @@ build/
 .DS_Store
 Thumbs.db
 
-# Docker volumes (не коммитим данные)
+# Docker volumes
 postgres_data/
 prometheus_data/
 grafana_data/
@@ -46,5 +46,3 @@ backups/
 .env.local
 .env.*.local
 
-# Prometheus (слишком большой файл)
-# prometheus/data/
