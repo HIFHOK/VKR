@@ -14,10 +14,8 @@ async def collect_and_save_data(db: AsyncSession):
     """Сбор метрик для всех узлов, ресурсов и компонентов"""
     
     async with httpx.AsyncClient(timeout=30.0) as client:
-        # 1. Сбор для старых Resource (обратная совместимость)
         await _collect_resources(db, client)
         
-        # 2. Сбор для новых HardwareComponent
         await _collect_hardware_components(db, client)
     
     await db.commit()
@@ -33,8 +31,8 @@ async def _collect_resources(db: AsyncSession, client: httpx.AsyncClient):
             value = await _query_prometheus(client, resource.metric_query)
             if value is not None:
                 record = MetricValue(
-                    resource_id=resource.id,  # ← только resource_id
-                    hardware_id=None,          # ← явно None
+                    resource_id=resource.id,
+                    hardware_id=None,
                     value=value,
                     timestamp=datetime.utcnow()
                 )
@@ -58,14 +56,13 @@ async def _collect_hardware_components(db: AsyncSession, client: httpx.AsyncClie
             value = await _query_prometheus(client, comp.metric_query)
             if value is not None:
                 record = MetricValue(
-                    resource_id=None,          # ← явно None
-                    hardware_id=comp.id,       # ← только hardware_id
+                    resource_id=None,
+                    hardware_id=comp.id,
                     value=value,
                     timestamp=datetime.utcnow()
                 )
                 db.add(record)
                 
-                # Обновляем current_usage для быстрого отображения
                 comp.current_usage = value
                 comp.current_usage_unit = _get_usage_unit(comp.metric_query, comp.max_capacity_unit)
                 
@@ -75,13 +72,10 @@ async def _collect_hardware_components(db: AsyncSession, client: httpx.AsyncClie
 
 def _get_usage_unit(metric_query: str, default_unit: str | None) -> str:
     """Определяет единицу измерения для current_usage"""
-    # Если запрос возвращает проценты
     if "* 100" in metric_query or "100 -" in metric_query:
         return "%"
-    # Если запрос возвращает байты/сек (сетевой трафик)
     if "rate(" in metric_query and "bytes" in metric_query:
         return "B/s"
-    # Иначе используем дефолтную единицу
     return default_unit or ""
 
 
@@ -97,7 +91,6 @@ async def _query_prometheus(client: httpx.AsyncClient, query: str) -> float | No
         if data.get("status") != "success" or not data["data"]["result"]:
             return None
         
-        # Берём первое значение из результата
         value = float(data["data"]["result"][0]["value"][1])
         return round(value, 2)
         
