@@ -13,7 +13,6 @@ async def aggregate_metrics(db: AsyncSession, hours: int = 1) -> int:
     """
     end_time = datetime.utcnow()
     
-    # 🔑 Выравниваем границы периода по началу часа (например, 13:00:00, 14:00:00)
     period_end = end_time.replace(minute=0, second=0, microsecond=0)
     period_start = period_end - timedelta(hours=hours)
 
@@ -36,7 +35,6 @@ async def aggregate_metrics(db: AsyncSession, hours: int = 1) -> int:
         values = [m.value for m in metrics_result.scalars().all() if m.value is not None]
 
         if len(values) >= 2:
-            # Удаляем старую запись за этот же период (если есть)
             await db.execute(
                 delete(AggregatedData).where(
                     and_(
