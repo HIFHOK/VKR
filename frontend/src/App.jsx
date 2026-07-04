@@ -8,18 +8,15 @@ export default function App() {
   const [tab, setTab] = useState('dashboard')
   const [health, setHealth] = useState(null)
   
-  // Глобальное состояние узла (общее для всех вкладок)
   const [selectedNode, setSelectedNode] = useState(null)
   const [nodes, setNodes] = useState([])
 
-  // 🔥 ЗАГРУЖАЕМ УЗЛЫ ПРИ СТАРТЕ ПРИЛОЖЕНИЯ
   useEffect(() => {
     const loadNodes = async () => {
       try {
         const data = await api.getNodes()
         const nodesList = Array.isArray(data) ? data : []
         setNodes(nodesList)
-        // Если есть узлы и ещё не выбран — выбираем первый
         if (nodesList.length > 0 && !selectedNode) {
           setSelectedNode(nodesList[0].id)
         }
@@ -28,9 +25,8 @@ export default function App() {
       }
     }
     loadNodes()
-  }, [])  // ← Пустой массив зависимостей = выполнить только при монтировании
+  }, [])
 
-  // Проверка здоровья
   useEffect(() => {
     const checkHealth = async () => {
       try {
@@ -68,7 +64,7 @@ export default function App() {
         </div>
       </nav>
 
-      {/* 🔥 Глобальный селектор узлов — показываем если есть хотя бы 1 узел */}
+      {/* Global selector */}
       {nodes.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 py-3 bg-gray-800/50 border-b border-gray-700 flex items-center gap-2 flex-wrap">
           <span className="text-sm text-gray-400">Active Node:</span>
@@ -106,7 +102,7 @@ export default function App() {
           />
         )}
         
-        {/* Показать подсказку только если узлов вообще нет */}
+        {/* */}
         {nodes.length === 0 && tab !== 'nodes' && (
           <div className="text-center py-12 text-gray-500">
             <p className="mb-2">No nodes configured yet</p>
